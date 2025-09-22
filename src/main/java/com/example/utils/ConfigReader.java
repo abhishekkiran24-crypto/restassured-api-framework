@@ -7,7 +7,12 @@ public class ConfigReader {
     private static Properties p = new Properties();
 
     static {  // static block executes once when the class is loaded
-        try (InputStream is = ConfigReader.class.getClassLoader().getResourceAsStream("config.properties")) {
+    	String env=System.getProperty("env"); //read from -Denv=qa
+    	if(env==null || env.isEmpty()) {
+    		env="dev"; //default
+    	}
+    	String fileName="config-"+env+ ".properties";
+        try (InputStream is = ConfigReader.class.getClassLoader().getResourceAsStream(fileName)) {
             if (is == null) {
                 throw new RuntimeException("config.properties not found in classpath");
             }

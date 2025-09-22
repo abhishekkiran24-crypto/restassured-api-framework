@@ -48,6 +48,8 @@
 <suiteXmlFiles>
 <suiteXmlFile>testng.xml</suiteXmlFile>
 </suiteXmlFiles>
+<parallel>methods</parallel>
+<threadCount>3</threadCount>
 </configuration>
 </plugin>
   </plugins>
