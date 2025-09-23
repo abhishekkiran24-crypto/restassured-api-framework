@@ -2,30 +2,69 @@ name: API Test Suite
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  workflow_dispatch:   # allows manual runs from Actions UI
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
+
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
+          distribution: temurin
           java-version: '17'
-          distribution: 'temurin'
-          cache: maven
+          cache: 'maven'
+
+      - name: Cache Maven repository
+        uses: actions/cache@v4
+        with:
+          # cache the local maven repo for faster builds
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       - name: Build and run tests
-        run: mvn -B clean test -DsuiteXmlFile=testng.xml -Denv=prod
+        run: mvn -U clean test -DsuiteXmlFile=testng.xml -Denv=prod
 
-      - name: Upload Allure Results
-        uses: actions/upload-artifact@v3
+      - name: Show generated files (debug)
+        run: |
+          echo "Listing target directory"
+          ls -la target || true
+          echo "Listing target/allure-results"
+          ls -la target/allure-results || true
+
+      - name: Upload Allure results artifact
+        uses: actions/upload-artifact@v4
         with:
           name: allure-results
-          path: target/allure-results
+          path: |
+            target/allure-results
+            target/surefire-reports
+
+      # Optional: generate Allure report on the runner and upload as zipped HTML
+      - name: Generate Allure HTML (optional)
+        if: success() && always()
+        run: |
+          # install allure if not present on runner (linux)
+          sudo apt-get update -y
+          sudo apt-get install -y default-jre # if needed for allure
+          # use allure-commandline (install via npm is another option). If you installed via brew locally, you'll run differently.
+          # Install allure (deb) isn't always available on GH runners; skip if you don't need on-runner HTML generation.
+          # Example using allure-commandline via scoop/npm/homebrew is runner-specific; consider generating locally.
+          echo "Skipping on-runner allure generation by default. Remove this step if you can install allure on runner."
+
+      # (Optional) upload generated HTML directory if generated above
+      - name: Upload Allure HTML (optional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-html
+          path: target/allure-report || ''
