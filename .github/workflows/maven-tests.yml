@@ -24,7 +24,7 @@ jobs:
       - name: Run Maven tests (generate Allure results)
         run: mvn -B -U clean test -DsuiteXmlFile=./testng.xml -Denv=prod
 
-      - name: Debug: show target contents
+      - name: Debug show target contents
         run: |
           echo "=== surefire-reports ==="
           ls -R target/surefire-reports || true
