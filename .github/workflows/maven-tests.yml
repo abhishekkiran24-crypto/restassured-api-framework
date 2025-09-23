@@ -9,23 +9,39 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
+          distribution: temurin
           java-version: '17'
-          distribution: 'temurin'
-          cache: maven
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       - name: Build and run tests
-        run: mvn clean test -DsuiteXmlFile=testng.xml
+        run: mvn -B -U clean test -DsuiteXmlFile=testng.xml
 
-      - name: Upload Allure results
+      - name: Generate Allure report HTML
+        # install allure commandline
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
+          wget https://github.com/allure-framework/allure2/releases/download/2.22.1/allure-2.22.1.zip -O /tmp/allure.zip
+          sudo unzip -o /tmp/allure.zip -d /opt/
+          echo "/opt/allure-2.22.1/bin" >> $GITHUB_PATH
+          allure generate target/allure-results -o target/allure-report --clean
+
+      - name: Upload Allure HTML report
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results
-          path: target/allure-results
+          name: allure-report
+          path: target/allure-report
