@@ -1,15 +1,15 @@
-name: API Test Suite (Allure + Maven)
+name: API Test Suite
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
-  workflow_dispatch:
+    branches: [ "main" ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,7 +19,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: 'maven'
+          cache: maven
 
       - name: Print java & maven versions
         run: |
@@ -27,7 +27,14 @@ jobs:
           mvn -v
 
       - name: Run Maven tests (generate Allure results)
-        run: mvn -B -U clean test -DsuiteXmlFile=testng.xml -Denv=prod
+        run: mvn -B -U clean test -DsuiteXmlFile=./testng.xml -Denv=prod
+
+      - name: "Debug: check surefire and allure"
+        run: |
+          echo "=== surefire reports ==="
+          ls -R target/surefire-reports || true
+          echo "=== allure results ==="
+          ls -R target/allure-results || true
 
       - name: Show generated target files (debug)
         run: |
@@ -37,6 +44,8 @@ jobs:
           ls -la target/allure-results || true
           echo "=== find result jsons under target ==="
           find target -type f -name "*-result.json" -o -name "*-container.json" -o -name "*-attachment.txt" -print || true
+          echo "=== tail testng-results.xml (if present) ==="
+          [ -f target/surefire-reports/testng-results.xml ] && tail -n 200 target/surefire-reports/testng-results.xml || echo "no testng-results.xml"
 
       - name: Upload raw Allure results (artifact)
         if: ${{ always() }}
@@ -46,28 +55,25 @@ jobs:
           path: target/allure-results
 
       - name: Install Allure CLI
-        if: ${{ always() }}
         run: |
-          set -e
-          ALLURE_VER=2.29.0
-          wget https://github.com/allure-framework/allure2/releases/download/${ALLURE_VER}/allure-${ALLURE_VER}.tgz -O /tmp/allure.tgz
-          sudo tar -zxvf /tmp/allure.tgz -C /opt/
-          sudo ln -sf /opt/allure-${ALLURE_VER}/bin/allure /usr/bin/allure
-          allure --version
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk unzip curl
+          curl -sSL https://repo.maven.apache.org/maven2/io/qameta/allure/allure/2.19.0/allure-2.19.0.zip -o /tmp/allure.zip
+          mkdir -p $HOME/.allure && unzip -q /tmp/allure.zip -d $HOME/.allure
+          echo "$HOME/.allure/allure-2.19.0/bin" >> $GITHUB_PATH
 
-      - name: Generate Allure HTML report (if results exist)
+      - name: Generate Allure HTML report (if results present)
         if: ${{ always() }}
         run: |
-          set -e
           if [ -d target/allure-results ] && [ "$(ls -A target/allure-results)" ]; then
             allure generate target/allure-results -o target/allure-report --clean
-            echo "Allure HTML generated at target/allure-report"
             ls -la target/allure-report || true
           else
-            echo "No allure-results found; skipping HTML generation"
+            echo "No allure-results found; skipping report generation"
           fi
 
       - name: Upload Allure HTML report (artifact)
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
