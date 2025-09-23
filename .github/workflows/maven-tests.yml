@@ -14,12 +14,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Show workspace (debug)
-        run: |
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
-          pwd
-          ls -la
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -35,25 +29,22 @@ jobs:
       - name: Run Maven tests (generate Allure results)
         run: mvn -B -U clean test -DsuiteXmlFile=testng.xml -Denv=prod
 
-      - name: Debug: show target and find Allure files
+      - name: Show generated target files (debug)
         run: |
-          echo "=== ls target ==="
+          echo "=== target listing ==="
           ls -la target || true
-          echo "=== ls target/allure-results ==="
+          echo "=== target/allure-results listing ==="
           ls -la target/allure-results || true
           echo "=== find result jsons under target ==="
           find target -type f -name "*-result.json" -o -name "*-container.json" -o -name "*-attachment.txt" -print || true
-          echo "=== tail testng-results.xml (if present) ==="
-          [ -f target/surefire-reports/testng-results.xml ] && tail -n 200 target/surefire-reports/testng-results.xml || echo "no testng-results.xml"
 
-      - name: Upload raw Allure results (always)
+      - name: Upload raw Allure results (artifact)
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: allure-results
           path: target/allure-results
 
-      # Install Allure CLI on runner so we can generate static HTML
       - name: Install Allure CLI
         if: ${{ always() }}
         run: |
@@ -62,7 +53,7 @@ jobs:
           wget https://github.com/allure-framework/allure2/releases/download/${ALLURE_VER}/allure-${ALLURE_VER}.tgz -O /tmp/allure.tgz
           sudo tar -zxvf /tmp/allure.tgz -C /opt/
           sudo ln -sf /opt/allure-${ALLURE_VER}/bin/allure /usr/bin/allure
-          echo "Allure installed at: $(which allure)"; allure --version
+          allure --version
 
       - name: Generate Allure HTML report (if results exist)
         if: ${{ always() }}
@@ -74,11 +65,9 @@ jobs:
             ls -la target/allure-report || true
           else
             echo "No allure-results found; skipping HTML generation"
-            exit 0
           fi
 
-      - name: Upload Allure HTML report (if generated)
-        if: ${{ always() && (exists('target/allure-report')) }}
+      - name: Upload Allure HTML report (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
