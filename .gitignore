@@ -2,3 +2,7 @@ target/
 .idea/
 *.iml
 *.log
+
+# Ignore test config with PAT
+src/test/resources/config.properties
+
