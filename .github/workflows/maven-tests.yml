@@ -15,6 +15,7 @@ jobs:
       - name: Show repo root and Java
         run: |
           echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
+          pwd
           java -version
           mvn -version
 
@@ -25,34 +26,27 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Run Maven tests (debug)
-        # Run tests normally (no surefire suite override). This will run tests matching Maven/Surefire defaults.
+      - name: Run Maven tests (with suite)
         run: |
           set -o pipefail
-          mvn -B clean test | tee mvn-output.log
-          echo "---- MVN OUTPUT END ----"
-          echo "Return code: $?"
+          echo "Running mvn with testng suite..."
+          mvn -B -Dsurefire.suiteXmlFiles=testng.xml -U clean test | tee mvn-output.log
+          echo "MVN RETURN CODE: $?"
 
-      - name: Show surefire and allure results folders (CI)
+      - name: Show target and results folders
         run: |
-          echo "=== Listing target (root) ==="
-          ls -la target || true
-          echo "=== Listing surefire-reports ==="
-          ls -la target/surefire-reports || true
-          echo "=== Listing allure-results ==="
-          ls -la target/allure-results || true
-          echo "=== Show workspace files (top) ==="
+          echo "=== workspace top ==="
           ls -la
+          echo "=== target ==="
+          ls -la target || true
+          echo "=== surefire-reports ==="
+          ls -la target/surefire-reports || true
+          echo "=== allure-results ==="
+          ls -la target/allure-results || true
 
-      - name: Print mvn-output.log tail
+      - name: Print mvn output tail
         if: always()
         run: tail -n 200 mvn-output.log || true
-
-      - name: Debug check allure results
-        run: |
-          echo "Listing target/allure-results"
-          ls -R target/allure-results || echo "No allure-results found"
-
 
       - name: Upload raw Allure results
         if: ${{ always() }}
@@ -62,8 +56,8 @@ jobs:
           path: target/allure-results
 
       - name: Upload surefire-reports (debug)
-        if: always()
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: surefire-reports
-          path: target/surefire-reports/**
+          path: target/surefire-reports
