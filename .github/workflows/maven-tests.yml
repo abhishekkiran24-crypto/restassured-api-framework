@@ -48,12 +48,18 @@ jobs:
         if: always()
         run: tail -n 200 mvn-output.log || true
 
-      - name: Upload raw Allure results (if any)
-        if: always()
+      - name: Debug check allure results
+        run: |
+          echo "Listing target/allure-results"
+          ls -R target/allure-results || echo "No allure-results found"
+
+
+      - name: Upload raw Allure results
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: allure-results
-          path: target/allure-results/**
+          path: target/allure-results
 
       - name: Upload surefire-reports (debug)
         if: always()
